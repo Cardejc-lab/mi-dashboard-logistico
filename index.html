@@ -10,7 +10,10 @@
     body { background: #f0f2f5; }
     .card { border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
     .kpi-value { font-size: 2rem; font-weight: bold; color: #0d6efd; }
-    navbar { background: #1a1a2e; }
+    .loading { text-align: center; padding: 40px; color: #888; }
+    .badge-completado { background-color: #198754; }
+    .badge-enruta     { background-color: #fd7e14; }
+    .badge-incidencia { background-color: #dc3545; }
   </style>
 </head>
 <body>
@@ -18,99 +21,191 @@
   <!-- NAVBAR -->
   <nav class="navbar navbar-dark bg-dark px-4 mb-4">
     <span class="navbar-brand fw-bold">🚛 Dashboard Logístico</span>
-    <span class="text-white-50">Módulo de Viajes</span>
+    <span class="text-white-50 small" id="fecha-hoy"></span>
   </nav>
 
   <div class="container-fluid px-4">
 
-    <!-- KPIs -->
-    <div class="row g-3 mb-4">
-      <div class="col-md-3">
-        <div class="card p-3 text-center">
-          <div class="text-muted small">Viajes del Día</div>
-          <div class="kpi-value">24</div>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="card p-3 text-center">
-          <div class="text-muted small">Unidades Activas</div>
-          <div class="kpi-value" style="color:#198754">18</div>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="card p-3 text-center">
-          <div class="text-muted small">Km Recorridos</div>
-          <div class="kpi-value" style="color:#fd7e14">4,320</div>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="card p-3 text-center">
-          <div class="text-muted small">Nivel de Servicio</div>
-          <div class="kpi-value" style="color:#dc3545">94%</div>
-        </div>
-      </div>
+    <!-- LOADING -->
+    <div id="loading" class="loading">
+      <div class="spinner-border text-primary mb-2"></div>
+      <p>Cargando datos desde Google Sheets...</p>
     </div>
 
-    <!-- GRAFICA + TABLA -->
-    <div class="row g-3">
+    <!-- CONTENIDO PRINCIPAL (oculto hasta cargar) -->
+    <div id="contenido" style="display:none">
 
-      <!-- Gráfica -->
-      <div class="col-md-6">
-        <div class="card p-3">
-          <h6 class="fw-bold mb-3">📊 Viajes por Día (Semana)</h6>
-          <canvas id="graficaViajes"></canvas>
+      <!-- KPIs -->
+      <div class="row g-3 mb-4">
+        <div class="col-md-3">
+          <div class="card p-3 text-center">
+            <div class="text-muted small">Total Viajes</div>
+            <div class="kpi-value" id="kpi-total">—</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card p-3 text-center">
+            <div class="text-muted small">Completados</div>
+            <div class="kpi-value" style="color:#198754" id="kpi-ok">—</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card p-3 text-center">
+            <div class="text-muted small">Km Totales</div>
+            <div class="kpi-value" style="color:#fd7e14" id="kpi-km">—</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card p-3 text-center">
+            <div class="text-muted small">% Nivel de Servicio</div>
+            <div class="kpi-value" style="color:#dc3545" id="kpi-ns">—</div>
+          </div>
         </div>
       </div>
 
-      <!-- Tabla -->
-      <div class="col-md-6">
-        <div class="card p-3">
-          <h6 class="fw-bold mb-3">📋 Últimos Viajes</h6>
-          <table class="table table-striped table-sm">
-            <thead class="table-dark">
-              <tr>
-                <th>Folio</th>
-                <th>Unidad</th>
-                <th>Ruta</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td>V-001</td><td>T-412</td><td>MTY → CDMX</td><td><span class="badge bg-success">Completado</span></td></tr>
-              <tr><td>V-002</td><td>T-308</td><td>GDL → MTY</td><td><span class="badge bg-warning text-dark">En Ruta</span></td></tr>
-              <tr><td>V-003</td><td>T-519</td><td>CDMX → VER</td><td><span class="badge bg-success">Completado</span></td></tr>
-              <tr><td>V-004</td><td>T-215</td><td>MTY → GDL</td><td><span class="badge bg-danger">Incidencia</span></td></tr>
-              <tr><td>V-005</td><td>T-401</td><td>VER → CDMX</td><td><span class="badge bg-warning text-dark">En Ruta</span></td></tr>
-              <tr><td>V-006</td><td>T-112</td><td>GDL → CDMX</td><td><span class="badge bg-success">Completado</span></td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <!-- GRAFICA + TABLA -->
+      <div class="row g-3">
 
+        <!-- Grafica -->
+        <div class="col-md-5">
+          <div class="card p-3 h-100">
+            <h6 class="fw-bold mb-3">📊 Viajes por Status</h6>
+            <canvas id="graficaStatus"></canvas>
+          </div>
+        </div>
+
+        <!-- Tabla -->
+        <div class="col-md-7">
+          <div class="card p-3">
+            <h6 class="fw-bold mb-3">📋 Registro de Viajes</h6>
+            <table class="table table-striped table-sm align-middle">
+              <thead class="table-dark">
+                <tr>
+                  <th>Folio</th>
+                  <th>Unidad</th>
+                  <th>Ruta</th>
+                  <th>Km</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-viajes"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
     </div>
   </div>
 
-  <!-- SCRIPT GRÁFICA -->
   <script>
-    const ctx = document.getElementById('graficaViajes').getContext('2d');
-    new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
-        datasets: [{
-          label: 'Viajes realizados',
-          data: [18, 22, 19, 25, 24, 15, 8],
-          backgroundColor: 'rgba(13, 110, 253, 0.7)',
-          borderRadius: 6
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true } }
-      }
-    });
-  </script>
+    // ── CONFIGURACIÓN ──────────────────────────────────────────────
+    const SHEET_ID = "1VvB7nOy9FybTTQRC4u3mVmYCgMJSMyxhR5FAg-B0nXs";
+    const GID      = 0;
+    const CSV_URL  = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`;
 
+    // ── FECHA EN NAVBAR ────────────────────────────────────────────
+    document.getElementById('fecha-hoy').textContent =
+      new Date().toLocaleDateString('es-MX', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+    // ── PARSEADOR CSV SIMPLE ───────────────────────────────────────
+    function parseCSV(text) {
+      const linea = text.trim().split('\n')[0];
+      const delim = (linea.match(/;/g) || []).length > (linea.match(/,/g) || []).length ? ';' : ',';
+      const filas = []; let campo = '', fila = [], dentro = false;
+      for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        if (c === '"') { dentro = !dentro; continue; }
+        if (!dentro && c === delim) { fila.push(campo.trim()); campo = ''; continue; }
+        if (!dentro && (c === '\n' || c === '\r')) {
+          if (campo !== '') { fila.push(campo.trim()); campo = ''; }
+          if (fila.length) filas.push(fila); fila = [];
+          continue;
+        }
+        campo += c;
+      }
+      if (campo !== '' || fila.length) { fila.push(campo.trim()); filas.push(fila); }
+      return filas;
+    }
+
+    // ── FUNCION BADGE SEGUN STATUS ─────────────────────────────────
+    function badge(status) {
+      const s = status.toLowerCase();
+      if (s.includes('complet')) return `<span class="badge badge-completado">${status}</span>`;
+      if (s.includes('incid'))   return `<span class="badge badge-incidencia">${status}</span>`;
+      return `<span class="badge badge-enruta">${status}</span>`;
+    }
+
+    // ── CARGAR DATOS ───────────────────────────────────────────────
+    async function cargarDatos() {
+      try {
+        const res  = await fetch(CSV_URL);
+        const text = await res.text();
+        const filas = parseCSV(text);
+
+        // Separar encabezados y datos
+        const headers = filas[0].map(h => h.toUpperCase().trim());
+        const data    = filas.slice(1).filter(f => f.length >= 4);
+
+        // Índices de columnas
+        const iFolio   = headers.indexOf('FOLIO');
+        const iUnidad  = headers.indexOf('UNIDAD');
+        const iRuta    = headers.indexOf('RUTA');
+        const iKm      = headers.indexOf('KM');
+        const iStatus  = headers.indexOf('STATUS');
+
+        // ── LLENAR TABLA ───────────────────────────────────────────
+        const tbody = document.getElementById('tabla-viajes');
+        tbody.innerHTML = data.map(f => `
+          <tr>
+            <td>${f[iFolio] ?? '—'}</td>
+            <td>${f[iUnidad] ?? '—'}</td>
+            <td>${f[iRuta]   ?? '—'}</td>
+            <td>${f[iKm]     ?? '—'}</td>
+            <td>${badge(f[iStatus] ?? 'N/D')}</td>
+          </tr>`).join('');
+
+        // ── CALCULAR KPIs ──────────────────────────────────────────
+        const total       = data.length;
+        const completados = data.filter(f => (f[iStatus]||'').toLowerCase().includes('complet')).length;
+        const kmTotales   = data.reduce((acc, f) => acc + (parseFloat(f[iKm]) || 0), 0);
+        const ns          = total > 0 ? Math.round((completados / total) * 100) : 0;
+
+        document.getElementById('kpi-total').textContent = total;
+        document.getElementById('kpi-ok').textContent    = completados;
+        document.getElementById('kpi-km').textContent    = kmTotales.toLocaleString('es-MX');
+        document.getElementById('kpi-ns').textContent    = ns + '%';
+
+        // ── GRAFICA DONUT POR STATUS ───────────────────────────────
+        const conteo = {};
+        data.forEach(f => {
+          const s = f[iStatus] || 'Sin dato';
+          conteo[s] = (conteo[s] || 0) + 1;
+        });
+
+        new Chart(document.getElementById('graficaStatus'), {
+          type: 'doughnut',
+          data: {
+            labels: Object.keys(conteo),
+            datasets: [{
+              data: Object.values(conteo),
+              backgroundColor: ['#198754','#fd7e14','#dc3545','#0d6efd'],
+              borderWidth: 2, borderColor: '#fff'
+            }]
+          },
+          options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+        });
+
+        // Mostrar contenido, ocultar loading
+        document.getElementById('loading').style.display  = 'none';
+        document.getElementById('contenido').style.display = 'block';
+
+      } catch (err) {
+        document.getElementById('loading').innerHTML =
+          `<div class="alert alert-danger mt-4">⚠️ Error al cargar datos.<br><small>${err.message}</small></div>`;
+      }
+    }
+
+    cargarDatos();
+  </script>
 </body>
 </html>
